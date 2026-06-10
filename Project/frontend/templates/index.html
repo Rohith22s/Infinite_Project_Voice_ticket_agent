@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice → Ticket Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+    <div class="app-container">
+        <header style="margin-bottom: 2rem; position: relative; display: flex; justify-content: space-between; align-items: center;">
+            <div class="logo" style="margin: 0; text-align: left;">
+                <i class="fa-solid fa-fire" style="color: #f97316;"></i>
+                <h1 style="display: inline-block; margin-left: 0.5rem;">Ignite Ticket</h1>
+            </div>
+            
+            <nav style="display: flex; gap: 1rem; align-items: center;">
+                <a href="/" class="secondary-btn" style="margin: 0; text-decoration: none; background: #0f172a; color: white;"><i class="fa-solid fa-house"></i> Dashboard</a>
+                <a href="/history" class="secondary-btn" style="margin: 0; text-decoration: none;"><i class="fa-solid fa-chart-pie"></i> History</a>
+                
+                <div class="system-status-container" style="position: relative; margin-left: 1rem;">
+                    <div class="status-pill" id="systemStatusPill">
+                        <div class="status-dot gray"></div>
+                        <span>System Status</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 0.8rem; margin-left: 0.5rem;"></i>
+                    </div>
+                    <div class="status-dropdown hidden" id="systemStatusDropdown" style="right: 0; left: auto;">
+                        <ul id="statusList">
+                            <li><div class="status-dot gray"></div> Checking...</li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Action Row (Side by side Upload and Record) -->
+            <section class="action-row" style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 3rem; flex-wrap: wrap;">
+                <!-- Upload -->
+                <div class="action-card" style="text-align: center; flex: 1; min-width: 280px; max-width: 350px;">
+                    <div class="ui-card">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 4rem; color: #6366f1; margin-bottom: 1.5rem;"></i>
+                        <h3 style="color: #0f172a; font-size: 1.4rem; font-weight: 800; margin-bottom: 2rem;">Upload File</h3>
+                        <input type="file" id="audioUpload" accept="audio/*,video/*,.mp4,.m4a,.mp3,.wav" class="hidden" title="Upload Audio or Video file" aria-label="Upload Audio or Video file">
+                        <button id="uploadBtn" class="custom-outline-btn">Select Audio</button>
+                    </div>
+                </div>
+
+                <!-- Record -->
+                <div class="action-card" style="text-align: center; flex: 1; min-width: 280px; max-width: 350px;">
+                    <div class="ui-card">
+                        <div class="record-ring" style="margin-bottom: 1.5rem; padding: 0;">
+                            <button id="recordButton" class="record-btn" aria-label="Record Audio">
+                                <i class="fa-solid fa-microphone"></i>
+                            </button>
+                        </div>
+                        <div class="status-display" style="text-align: center;">
+                            <p id="statusText" style="font-size: 0.95rem; color: #64748b; font-weight: 600; margin-bottom: 0.5rem;">Ready to record</p>
+                            <p id="recordingTime" style="font-weight: 900; font-size: 1.4rem; color: #0f172a;">00:00</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Processing overlay moved above tickets -->
+            <div id="processingOverlay" class="hidden">
+                <h3 style="color: white; margin-bottom: 1rem;">Processing Ticket</h3>
+                <div class="stepper">
+                    <div class="step" id="step1">
+                        <div class="step-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                        <span class="step-text" style="color: white;">Uploading</span>
+                    </div>
+                    <div class="step" id="step2">
+                        <div class="step-icon"><i class="fa-solid fa-closed-captioning"></i></div>
+                        <span class="step-text" style="color: white;">Transcribing</span>
+                    </div>
+                    <div class="step" id="step3">
+                        <div class="step-icon"><i class="fa-solid fa-brain"></i></div>
+                        <span class="step-text" style="color: white;">AI Analysis</span>
+                    </div>
+                    <div class="step" id="step4">
+                        <div class="step-icon"><i class="fa-solid fa-ticket"></i></div>
+                        <span class="step-text" style="color: white;">Finalizing</span>
+                    </div>
+                </div>
+                <p id="processingText" style="color: rgba(255,255,255,0.9); margin-top: 1.5rem; font-weight: 500;">Please wait...</p>
+            </div>
+
+            <!-- Tickets Section -->
+            <section class="tickets-section">
+                <div class="section-header" style="text-align: center; margin-bottom: 2rem; position: relative;">
+                    <h2 style="font-size: 2.2rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-primary);">Tickets</h2>
+                    <div style="width: 80px; height: 4px; background: var(--accent-color); margin: 0.5rem auto 0 auto; border-radius: 2px;"></div>
+                    <div style="position: absolute; right: 0; top: 0; display: flex; align-items: center; gap: 1rem;">
+                        
+                        <div class="search-container" style="position: relative;">
+                            <i class="fa-solid fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); opacity: 0.7; font-size: 0.9rem; pointer-events: none;"></i>
+                            <input type="text" id="ticketSearch" class="glass-input" placeholder="Search tickets...">
+                        </div>
+
+                        <div class="custom-dropdown" id="deptDropdownContainer">
+                            <div class="custom-dropdown-btn" id="deptDropdownBtn">
+                                <span id="deptDropdownText">All Departments</span>
+                                <i class="fa-solid fa-chevron-down" style="font-size: 0.8rem; margin-left: 0.5rem; color: #1e293b;"></i>
+                            </div>
+                            <div class="custom-dropdown-menu" id="deptDropdownMenu">
+                                <div class="custom-dropdown-item active" data-value="All">All Departments</div>
+                                <div class="custom-dropdown-item" data-value="IT Support">IT Support</div>
+                                <div class="custom-dropdown-item" data-value="Hardware">Hardware</div>
+                                <div class="custom-dropdown-item" data-value="Network">Network</div>
+                                <div class="custom-dropdown-item" data-value="Software">Software</div>
+                                <div class="custom-dropdown-item" data-value="Billing">Billing</div>
+                                <div class="custom-dropdown-item" data-value="Finance">Finance</div>
+                                <div class="custom-dropdown-item" data-value="Sales">Sales</div>
+                                <div class="custom-dropdown-item" data-value="General">General</div>
+                            </div>
+                        </div>
+
+                        <button id="refreshBtn" class="icon-btn" aria-label="Refresh tickets" style="position: relative; margin: 0; font-size: 1.4rem; color: #475569;"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                </div>
+                
+                <div class="tickets-table-container glass-panel" style="padding: 1rem; overflow-x: auto;">
+                    <table class="tickets-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid rgba(0,0,0,0.1);">
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; width: 80px;">ID</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600;">Problems</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; width: 150px;">Priority</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; width: 150px; text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticketsTableBody">
+                            <!-- Table rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+    
+    <script src="/static/status.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
