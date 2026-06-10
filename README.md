@@ -2,6 +2,9 @@
 
 Ignite Ticket is a next-generation AI-powered customer support dashboard. It automates the entire support pipeline by listening to user audio (in English or regional languages like Tamil), transcribing and translating it, and using local LLMs to intelligently extract structured ticket metadata (Name, Email, Priority, Category, and Department). Finally, it routes the generated ticket to the appropriate department via automated email.
 
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/9cb60ba8-fcee-4525-a118-e68f167959f0" />
+
+
 # Features
 
 -  Voice-to-Text & Translation**: Utilizes OpenAI's Whisper model to transcribe audio and translate regional languages (like Tamil) into English automatically.
@@ -94,6 +97,7 @@ To manually test the AI pipeline from the UI:
 │   └── voice_to_text.py    # Whisper transcription & Llama 3 extraction logic
 └── .env                    # Secret environment variables
 ```
+
 
 # License
 This project is open-source and available under the [MIT License](LICENSE).
