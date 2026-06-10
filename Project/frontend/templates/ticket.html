@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket #{{ ticket_id }} - Voice → Ticket Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header style="margin-bottom: 2rem; position: relative;">
+            <div class="system-status-container" style="position: absolute; top: 0; right: 0;">
+                <div class="status-pill" id="systemStatusPill">
+                    <div class="status-dot gray"></div>
+                    <span>System Status</span>
+                    <i class="fa-solid fa-chevron-down" style="font-size: 0.8rem; margin-left: 0.5rem;"></i>
+                </div>
+                <div class="status-dropdown hidden" id="systemStatusDropdown">
+                    <ul id="statusList">
+                        <li><div class="status-dot gray"></div> Checking...</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="logo">
+                <i class="fa-solid fa-fire" style="color: #f97316;"></i>
+                <h1>Ignite Ticket</h1>
+            </div>
+
+        </header>
+
+        <main>
+            <div class="glass-panel" style="margin: 0 auto; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <a href="/" class="secondary-btn back-btn" style="margin: 0;">
+                        <i class="fa-solid fa-arrow-left"></i> Back
+                    </a>
+                    <div style="display: flex;">
+                        <button id="resolveTicketBtn" class="secondary-btn"
+                            style="margin: 0 1rem 0 0; background-color: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2);">
+                            <i class="fa-solid fa-check"></i> Mark as Resolved
+                        </button>
+                        <button id="deleteTicketBtn" class="secondary-btn"
+                        style="margin: 0; background-color: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2);">
+                        <i class="fa-solid fa-trash"></i> Delete Ticket
+                        </button>
+                    </div>
+                </div>
+
+                <div id="ticketContainer">
+                    <div id="skeletonLoader"
+                        style="text-align: left; padding: 1rem; opacity: 0.7; animation: pulse 1.5s infinite cubic-bezier(0.4, 0, 0.6, 1);">
+                        <div
+                            style="width: 60%; height: 3rem; background: rgba(0,0,0,0.05); border-radius: 12px; margin-bottom: 1rem;">
+                        </div>
+                        <div
+                            style="width: 30%; height: 1.5rem; background: rgba(0,0,0,0.05); border-radius: 6px; margin-bottom: 2rem;">
+                        </div>
+                        <div
+                            style="width: 100%; height: 6rem; background: rgba(0,0,0,0.03); border-radius: 12px; margin-bottom: 1.5rem;">
+                        </div>
+                        <div style="width: 85%; height: 4rem; background: rgba(0,0,0,0.03); border-radius: 12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const ticketId = "{{ ticket_id }}";
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const container = document.getElementById('ticketContainer');
+
+            try {
+                const response = await fetch(`/api/ticket/${ticketId}`);
+                if (!response.ok) throw new Error('Ticket not found');
+                const record = await response.json();
+
+                const date = new Date(record.created_at).toLocaleString();
+
+                let titleHtml = record.title || 'N/A';
+                let descHtml = record.description ? record.description.replace(/\n/g, '<br>') : 'No detailed explanation provided.';
+                let badgesHtml = '';
+
+                if (record.category) badgesHtml += `<span class="badge category" style="font-size: 0.9rem; padding: 0.4rem 1rem;">${record.category}</span>`;
+                if (record.priority) badgesHtml += `<span class="badge priority-${record.priority}" style="font-size: 0.9rem; padding: 0.4rem 1rem;">${record.priority}</span>`;
+                
+                if (record.sentiment) {
+                    let sentColor = 'var(--accent-color)';
+                    if(record.sentiment === 'Frustrated' || record.sentiment === 'Urgent') sentColor = 'var(--danger)';
+                    if(record.sentiment === 'Positive') sentColor = '#10b981';
+                    badgesHtml += `<span class="badge" style="background: rgba(0,0,0,0.05); color: ${sentColor}; border: 1px solid ${sentColor}; font-size: 0.9rem; padding: 0.4rem 1rem;"><i class="fa-solid fa-face-smile"></i> ${record.sentiment}</span>`;
+                }
+                if (record.department) {
+                    badgesHtml += `<span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 0.9rem; padding: 0.4rem 1rem;"><i class="fa-solid fa-building"></i> ${record.department}</span>`;
+                }
+                if (record.status) {
+                    const statusColor = record.status === 'Resolved' ? '#10b981' : 'var(--danger)';
+                    badgesHtml += `<span class="badge" style="background: rgba(0,0,0,0.05); color: ${statusColor}; border: 1px solid ${statusColor}; font-size: 0.9rem; padding: 0.4rem 1rem;">${record.status}</span>`;
+                }
+
+                let keyDetails = {};
+                if (record.key_details) {
+                    try {
+                        keyDetails = JSON.parse(record.key_details);
+                    } catch (e) {}
+                }
+
+                let tableHtml = '';
+                if (Object.keys(keyDetails).length > 0) {
+                    tableHtml = `
+                        <div class="ticket-section" style="background: rgba(255,255,255,0.6); box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                            <h3 style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 1rem; text-transform: uppercase;">Extracted Information</h3>
+                            <table class="details-table" style="width: 100%; border-collapse: collapse;">
+                                <tbody>
+                    `;
+                    for (const [key, value] of Object.entries(keyDetails)) {
+                        tableHtml += `
+                                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.05);">
+                                        <td style="padding: 0.8rem 0; width: 35%; color: var(--text-secondary); font-weight: 500;">${key}</td>
+                                        <td style="padding: 0.8rem 0; color: var(--text-primary);">${value}</td>
+                                    </tr>
+                        `;
+                    }
+                    tableHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                let audioHtml = '';
+                if (record.audio_file_path) {
+                    audioHtml = `
+                        <div class="ticket-section" style="margin-top: 2rem;">
+                            <h3 style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 1rem; text-transform: uppercase;">Original Call Audio</h3>
+                            <audio controls class="custom-audio">
+                                <source src="/${record.audio_file_path}" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    `;
+                }
+
+                let deptCode = record.department ? record.department.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase() : 'GEN';
+                let prioCode = record.priority ? record.priority.substring(0, 1).toUpperCase() : 'U';
+                let formattedId = `${deptCode}-${prioCode}-${record.id.toString().padStart(4, '0')}`;
+                
+                document.title = `Ticket #${formattedId} - Ignite Ticket`;
+
+                container.innerHTML = `
+                    <div class="ticket-header" style="margin-bottom: 2rem; padding-right: 100px;">
+                        <h2 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--text-primary);">${titleHtml}</h2>
+                        <div style="color: var(--text-secondary); margin-bottom: 1rem; font-weight: 600;">Ticket #${formattedId} • Opened on ${date}</div>
+                        <div class="ticket-badges" style="gap: 1rem;">${badgesHtml}</div>
+                    </div>
+                    
+                    ${tableHtml}
+                    
+                    <div class="ticket-section" style="background: rgba(255,255,255,0.6); box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border-left: 4px solid var(--accent-color);">
+                        <h3 style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 1rem; text-transform: uppercase;">Detailed Explanation</h3>
+                        <p style="font-size: 1.1rem; line-height: 1.6; color: var(--text-primary);">${descHtml}</p>
+                    </div>
+                    
+                    <div class="ticket-section" style="background: rgba(255,255,255,0.4); border: 1px solid rgba(0,0,0,0.05); padding: 1.5rem; border-radius: 12px;">
+                        <h3 style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 1rem; text-transform: uppercase;">Raw Transcription</h3>
+                        <p style="font-size: 1rem; line-height: 1.6; color: var(--text-primary); font-style: italic;">"${record.transcription || 'No transcription available.'}"</p>
+                    </div>
+                    
+                    ${audioHtml}
+                `;
+
+                const resolveBtn = document.getElementById('resolveTicketBtn');
+                if (resolveBtn) {
+                    if (record.status === 'Resolved') {
+                        resolveBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Reopen Ticket';
+                        resolveBtn.style.color = 'var(--accent-color)';
+                        resolveBtn.style.borderColor = 'rgba(99, 102, 241, 0.2)';
+                        resolveBtn.style.backgroundColor = 'rgba(99, 102, 241, 0.1)';
+                    }
+                    resolveBtn.addEventListener('click', async () => {
+                        const newStatus = record.status === 'Resolved' ? 'Open' : 'Resolved';
+                        try {
+                            const res = await fetch(`/api/ticket/${ticketId}/status`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: newStatus })
+                            });
+                            if (res.ok) {
+                                window.location.reload();
+                            } else {
+                                alert('Failed to update status.');
+                            }
+                        } catch (e) {
+                            alert('Error: ' + e.message);
+                        }
+                    });
+                }
+
+                const deleteBtn = document.getElementById('deleteTicketBtn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', async () => {
+                        if (confirm('Are you sure you want to delete this ticket?')) {
+                            try {
+                                const response = await fetch(`/api/ticket/${ticketId}`, { method: 'DELETE' });
+                                if (response.ok) {
+                                    window.location.href = '/';
+                                } else {
+                                    alert('Failed to delete ticket.');
+                                }
+                            } catch (error) {
+                                alert('Error deleting ticket: ' + error.message);
+                            }
+                        }
+                    });
+                }
+
+            } catch (error) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                        <h2 style="color: var(--text-primary); margin-bottom: 1rem;">Error Loading Ticket</h2>
+                        <p style="color: var(--text-secondary);">${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+    <script src="/static/status.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History & Analytics - Ignite Ticket</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header style="margin-bottom: 2rem; position: relative; display: flex; justify-content: space-between; align-items: center;">
+            <div class="logo" style="margin: 0; text-align: left;">
+                <i class="fa-solid fa-fire" style="color: #f97316;"></i>
+                <h1 style="display: inline-block; margin-left: 0.5rem;">Ignite Ticket</h1>
+            </div>
+            
+            <nav style="display: flex; gap: 1rem; align-items: center;">
+                <a href="/" class="secondary-btn" style="margin: 0; text-decoration: none;"><i class="fa-solid fa-house"></i> Dashboard</a>
+                <a href="/history" class="secondary-btn" style="margin: 0; text-decoration: none; background: #0f172a; color: white;"><i class="fa-solid fa-chart-pie"></i> History</a>
+                
+                <div class="system-status-container" style="position: relative; margin-left: 1rem;">
+                    <div class="status-pill" id="systemStatusPill">
+                        <div class="status-dot gray"></div>
+                        <span>System Status</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 0.8rem; margin-left: 0.5rem;"></i>
+                    </div>
+                    <div class="status-dropdown hidden" id="systemStatusDropdown" style="right: 0; left: auto;">
+                        <ul id="statusList">
+                            <li><div class="status-dot gray"></div> Checking...</li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <div class="section-header" style="text-align: center; margin-bottom: 3rem; position: relative;">
+                <h2 style="font-size: 2.2rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-primary);">Analytics Overview</h2>
+                <div style="width: 80px; height: 4px; background: var(--accent-color); margin: 0.5rem auto 0 auto; border-radius: 2px;"></div>
+            </div>
+
+            <!-- Metrics Row -->
+            <section style="display: flex; gap: 2rem; margin-bottom: 4rem; justify-content: center; flex-wrap: wrap;">
+                <!-- Total Tickets -->
+                <div class="ui-card" style="flex: 1; min-width: 200px; max-width: 250px; padding: 2rem; text-align: center;">
+                    <i class="fa-solid fa-ticket" style="font-size: 2.5rem; color: #64748b; margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.5rem; text-transform: uppercase;">Total Processed</h3>
+                    <p id="totalCount" style="font-size: 3rem; font-weight: 900; color: #0f172a;">0</p>
+                </div>
+
+                <!-- Solved -->
+                <div class="ui-card" style="flex: 1; min-width: 200px; max-width: 250px; padding: 2rem; text-align: center;">
+                    <i class="fa-solid fa-circle-check" style="font-size: 2.5rem; color: #10b981; margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.5rem; text-transform: uppercase;">Problems Solved</h3>
+                    <p id="solvedCount" style="font-size: 3rem; font-weight: 900; color: #10b981;">0</p>
+                </div>
+
+                <!-- Unsolved -->
+                <div class="ui-card" style="flex: 1; min-width: 200px; max-width: 250px; padding: 2rem; text-align: center;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 2.5rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.5rem; text-transform: uppercase;">Unsolved</h3>
+                    <p id="unsolvedCount" style="font-size: 3rem; font-weight: 900; color: var(--danger);">0</p>
+                </div>
+            </section>
+
+            <!-- Timeline Section -->
+            <section>
+                <div class="section-header" style="margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.8rem; color: var(--text-primary);">Ticket History</h2>
+                    <p style="color: var(--text-secondary);">Chronological order of all tickets processed</p>
+                </div>
+
+                <div class="glass-panel" style="padding: 1rem; overflow-x: auto;">
+                    <table class="tickets-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid rgba(0,0,0,0.1);">
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; width: 180px;">Date & Time</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; width: 120px;">Ticket ID</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600;">Details</th>
+                                <th style="padding: 1rem; color: var(--text-secondary); font-weight: 600; width: 150px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr><td colspan="4" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const historyBody = document.getElementById('historyTableBody');
+            const totalEl = document.getElementById('totalCount');
+            const solvedEl = document.getElementById('solvedCount');
+            const unsolvedEl = document.getElementById('unsolvedCount');
+
+            try {
+                const response = await fetch('/api/records');
+                const records = await response.json();
+                
+                // Calculate metrics
+                totalEl.textContent = records.length;
+                const solved = records.filter(r => r.status === 'Resolved').length;
+                solvedEl.textContent = solved;
+                unsolvedEl.textContent = records.length - solved;
+
+                historyBody.innerHTML = '';
+
+                if (records.length === 0) {
+                    historyBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No history found.</td></tr>';
+                    return;
+                }
+
+                // Sort chronologically (newest first, already done by API but let's enforce)
+                records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                records.forEach(record => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = "1px solid rgba(0,0,0,0.05)";
+                    
+                    const dateObj = new Date(record.created_at);
+                    const dateStr = dateObj.toLocaleDateString();
+                    const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    let deptCode = record.department ? record.department.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase() : 'GEN';
+                    let prioCode = record.priority ? record.priority.substring(0, 1).toUpperCase() : 'U';
+                    let formattedId = `${deptCode}-${prioCode}-${record.id.toString().padStart(4, '0')}`;
+
+                    let statusBadge = '';
+                    if (record.status === 'Resolved') {
+                        statusBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid #10b981; font-size: 0.8rem; padding: 0.3rem 0.8rem;">Solved</span>`;
+                    } else {
+                        statusBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); font-size: 0.8rem; padding: 0.3rem 0.8rem;">Unsolved</span>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td style="padding: 1rem; color: var(--text-secondary);">
+                            <div style="font-weight: 600; color: var(--text-primary);">${dateStr}</div>
+                            <div style="font-size: 0.85rem;">${timeStr}</div>
+                        </td>
+                        <td style="padding: 1rem; color: var(--text-primary); font-weight: 700;">
+                            <a href="/ticket/${record.id}" style="color: var(--accent-color); text-decoration: none;">#${formattedId}</a>
+                        </td>
+                        <td style="padding: 1rem;">
+                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">${record.title || 'Untitled'}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">${record.department || 'General'} • ${record.category || 'Other'}</div>
+                        </td>
+                        <td style="padding: 1rem;">${statusBadge}</td>
+                    `;
+                    historyBody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error("Error fetching history:", error);
+                historyBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--danger);">Failed to load history data.</td></tr>';
+            }
+        });
+    </script>
+    <script src="/static/status.js"></script>
+</body>
+</html>
