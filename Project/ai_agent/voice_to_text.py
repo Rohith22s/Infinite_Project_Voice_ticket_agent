@@ -6,14 +6,18 @@ import argparse
 from datetime import datetime
 from database.db_operations import insert_ticket
 import json
+import sys
 # pyrefly: ignore [missing-import]
 import whisper
 # pyrefly: ignore [missing-import]
 import ollama
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from backend.email_service import send_ticket_email
+
 print("Loading Whisper model (this may take a few seconds)...")
-# Changed to 'base' for faster processing (previously 'small')
-whisper_model = whisper.load_model("base")
+# Changed back to 'small' for better transcription and translation accuracy
+whisper_model = whisper.load_model("small")
 
 
 
@@ -55,11 +59,11 @@ def extract_information(text):
         response = ollama.chat(
             model='llama3',
             format='json',
-            options={'temperature': 0.0, 'num_predict': 300}, # Limit output tokens and temperature for faster processing
+            options={'temperature': 0.0, 'num_predict': 600}, # Limit output tokens and temperature for faster processing
             messages=[
                 {
                     "role": "system", 
-                    "content": "You are an expert AI support agent. The user may speak in English, Tamil, or a mix of both (Tanglish). The audio has been automatically transcribed and translated into English, which often introduces phonetic misspellings or literal translations of Tamil idioms. Extract and correct the customer's details from this transcription. Fix phonetic errors (e.g. 'Cozzalia K O W S A L Y A' to 'Kowsalya') and interpret context properly. All output must be written in professional English. Return ONLY a valid JSON object with exactly these keys: 'title' (short summary), 'description' (polished explanation of the issue), 'category' (one of: 'Network', 'Hardware', 'Software', 'Other'), 'department' (e.g., 'IT Support', 'Billing', 'Sales', 'General'), 'priority' (STRICTLY determined by department: if IT Support/Hardware/Network -> 'High', if Billing/Finance -> 'Medium', if Sales/General/Other -> 'Low'), 'sentiment' (one of: 'Positive', 'Neutral', 'Frustrated', 'Urgent'), and 'key_details' (a nested JSON object containing exactly 4 keys: 'Name' (Correctly spelled), 'Email' (Format as a valid lowercase email address), 'Mobile No' (Continuous digits only), and 'Problem'. If a detail is missing, use 'Not provided'). Do not include any other text."
+                    "content": "You are an expert AI support ticket extraction agent. The user may speak in English, Tamil, or a mix of both (Tanglish). The audio has been automatically transcribed and translated into English, which often introduces phonetic misspellings, spaces in words, or literal translations of Tamil idioms. Your task is to extract customer details with high accuracy and correct any phonetic or formatting errors.\n\nExtraction Rules:\n1. Name: Extract the customer's name. Fix phonetic spelling errors (e.g., 'Cozzalia K O W S A L Y A' -> 'Kowsalya', 'senthil' -> 'Senthil'). Capitalize properly.\n2. Email: Extract the email address and format it properly in lowercase (e.g., 'john at gmail dot com' -> 'john@gmail.com', 'admin at support dot in' -> 'admin@support.in'). Strip any surrounding spaces.\n3. Mobile No: Extract the phone number. Remove all spaces, dashes, and non-digit characters. It should be continuous digits (e.g., '9 8 7 6 5 4 3 2 1 0' -> '9876543210').\n4. Problem: Extract the core issue the customer is facing and write it clearly.\n5. Title & Description: Create a short title and a professional, polished description of the issue.\n\nReturn ONLY a valid JSON object with exactly these keys: 'title' (short summary), 'description' (polished explanation of the issue), 'category' (one of: 'Network', 'Hardware', 'Software', 'Other'), 'department' (e.g., 'IT Support', 'Billing', 'Sales', 'General'), 'priority' (STRICTLY determined by department: if IT Support/Hardware/Network -> 'High', if Billing/Finance -> 'Medium', if Sales/General/Other -> 'Low'), 'sentiment' (one of: 'Positive', 'Neutral', 'Frustrated', 'Urgent'), and 'key_details' (a nested JSON object containing exactly 4 keys: 'Name', 'Email', 'Mobile No', and 'Problem'. If a detail is missing, use 'Not provided'). Do not include any other text or markdown formatting."
                 },
                 {"role": "user", "content": text}
             ]
@@ -141,6 +145,14 @@ def main():
                 )
             print(f"Record successfully saved with ID: {record_id}")
             print(f"Audio file kept at: {audio_path}")
+            
+            # Dispatch email
+            if extracted_info and isinstance(extracted_info, dict):
+                try:
+                    print("Sending email notification...")
+                    send_ticket_email(record_id, extracted_info)
+                except Exception as e:
+                    print(f"Error dispatching email: {e}")
             
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
